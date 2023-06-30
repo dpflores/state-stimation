@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from rotations import angle_normalize, rpy_jacobian_axis_angle, skew_symmetric, Quaternion
 
+from kalman import ExtendedFilter
+
 #### 1. Data ###################################################################################
 
 ################################################################################################
@@ -131,6 +133,8 @@ v_est = np.zeros([imu_f["data"].data.shape[0], 3])  # velocity estimates
 q_est = np.zeros([imu_f["data"].shape[0], 4])  # orientation estimates as quaternions
 p_cov = np.zeros([imu_f["data"].shape[0], 6, 6])  # covariance matrices at each timestep
 
+x_est = np.zeros([imu_f["data"].shape[0], 6])
+
 
 # Set initial values.
 p_est[0] = gt["p"][0]
@@ -140,35 +144,39 @@ p_cov[0] = np.zeros(6)  # covariance of estimate
 gnss_i  = 0
 lidar_i = 0
 
+
+x_est[:,:3] = p_est
+x_est[:,3:] = v_est
+
+
+
+# Declaramos el filtro
+
+kalman = ExtendedFilter(xk0=x_est[0].T,uk0=imu_f["data"][0],Pk0=p_cov[0])
+
 #### 4. Measurement Update #####################################################################
 
 ################################################################################################
 # Since we'll need a measurement update for both the GNSS and the LIDAR data, let's make
 # a function for it.
 ################################################################################################
+
+
 def measurement_update(sensor_var, p_cov_check, y_k, p_check, v_check):
+
+    
     # 3.1 Compute Kalman Gain
     H = np.zeros((3,6))
     H[:3,:3] = np.eye(3)
     I = np.eye(3)
+    M = I
     R = I * sensor_var
-    K = p_cov_check @ H.T @ np.linalg.inv(H @ p_cov_check @ H.T + R)
 
-    # 3.2 Compute error state
+    kalman.correction_step(yk=y_k,h=p_check, Hk=H,Mk=M, R=R)
 
-    error = K @ (y_k - p_check)
-
-    p_delta = error[:3]
-    v_delta = error[3:6]
-
-    # 3.3 Correct predicted state
-
-    p_hat = p_check + p_delta
-    v_hat = v_check + v_delta
-
-    # 3.4 Compute corrected covariance
-
-    p_cov_hat = (np.eye(6) - K @ H) @ p_cov_check
+    p_hat = kalman.xk[:3]
+    v_hat = kalman.xk[3:]
+    p_cov_hat = kalman.Pk
 
     return p_hat, v_hat, p_cov_hat
 
@@ -211,10 +219,16 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
 
     Q = var_imu_f * delta_t**2 * np.eye(3)
     
-    # 2. Propagate uncertainty
-    
-    p_cov[k] = F @ p_cov[k-1] @ F.T + L @ Q @ L.T
 
+    # Kalman class
+
+    f = np.hstack((p_est[k], v_est[k])).T
+    
+    kalman.prediction_step(f,F,L,Q)
+
+    p_est[k] = kalman.xk[:3]
+    v_est[k] = kalman.xk[3:]
+    p_cov[k] = kalman.Pk
 
     # ODOMETRY
     yaw = gt["r"][k-1][2]+ np.random.normal(0,0.1)
