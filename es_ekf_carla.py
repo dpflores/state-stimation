@@ -108,7 +108,7 @@ t_i_li = np.array([0.5, 0.1, 0.5])
 ################################################################################################
 var_imu_f = 0.30
 var_imu_w = 0.25
-var_gnss  = 0.01
+var_gnss  = 0.2
 var_lidar = 1.00
 var_odom  = 0.30
 
@@ -193,6 +193,9 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
     
     C_ns = np.eye(3) # El simulador CARLA ya realiza las transformaciones con respecto al sistema que queremos
 
+    # Adding noise
+    imu_f["data"][k-1]=imu_f["data"][k-1] + np.random.normal(0,0.5, (1,3))
+
     p_est[k] = p_est[k-1] + delta_t*v_est[k-1] + 0.5*(delta_t**2)*(C_ns@imu_f["data"][k-1])
 
     v_est[k] = v_est[k-1] + delta_t*(C_ns@imu_f["data"][k-1])
@@ -213,22 +216,28 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
 
 
     # ODOMETRY
-    yaw = gt["r"][k-1][2]
+    yaw = gt["r"][k-1][2]+ np.random.normal(0,0.1)
+
+    # Adding noise 
+
+    gt["v"][k-1] = gt["v"][k-1] + np.random.normal(0,2)
 
     x_odom = p_est[k-1][0] + delta_t*gt["v"][k-1]*np.cos(yaw)
     y_odom = p_est[k-1][1] + delta_t*gt["v"][k-1]*np.sin(yaw)
 
     p_odom = np.array([x_odom, y_odom, 1])
+    # p_est[k] = p_odom
 
     p_est[k], v_est[k], p_cov[k] = measurement_update(var_odom, p_cov[k], p_odom, p_est[k], v_est[k])
 
     # 3. Check availability of GNSS and LIDAR measurements
 
 
+
     if count == 45:
-        p_est[k], v_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gnss["data"][k], p_est[k], v_est[k])
+        p_est[k], v_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gnss["data"][k] + np.random.normal(0,2, (3,)), p_est[k], v_est[k])
         count = 0
-    
+        # p_est[k] = gnss["data"][k] + np.random.normal(0,2, (3,))
     count += 1
     
     # if lidar_i < lidar.t.shape[0] and lidar.t[lidar_i] == imu_f.t[k-1]:
