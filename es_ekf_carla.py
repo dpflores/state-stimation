@@ -19,7 +19,7 @@ data = np.genfromtxt('data/data.txt', delimiter=',', skip_header=1)
 gnss_data = np.column_stack((data[:, 9:11], np.ones((data.shape[0], 1))))
 
 # Crear los objetos gt, imu_f y gnss
-gt = {'p': data[:, 11:14], 'w': np.zeros((data.shape[0], 3)), 'r': data[:, 6:9], '_t': data[:, 0]}
+gt = {'p': data[:, 11:14], 'w': np.zeros((data.shape[0], 3)), 'r': data[:, 6:9], '_t': data[:, 0], 'v':data[:,4]}
 imu_f = {'data': data[:, 1:4], 't': data[:, 0]}
 gnss = {'data': gnss_data, 't': data[:, 0]}
 
@@ -106,10 +106,11 @@ t_i_li = np.array([0.5, 0.1, 0.5])
 # most important aspects of a filter is setting the estimated sensor variances correctly.
 # We set the values here.
 ################################################################################################
-var_imu_f = 0.10
+var_imu_f = 0.30
 var_imu_w = 0.25
 var_gnss  = 0.01
 var_lidar = 1.00
+var_odom  = 0.30
 
 ################################################################################################
 # We can also set up some constants that won't change for any iteration of our solver.
@@ -148,7 +149,7 @@ def measurement_update(sensor_var, p_cov_check, y_k, p_check, v_check):
     # 3.1 Compute Kalman Gain
     H = np.zeros((3,6))
     H[:3,:3] = np.eye(3)
-    I = np.identity(3)
+    I = np.eye(3)
     R = I * sensor_var
     K = p_cov_check @ H.T @ np.linalg.inv(H @ p_cov_check @ H.T + R)
 
@@ -210,7 +211,19 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
     
     p_cov[k] = F @ p_cov[k-1] @ F.T + L @ Q @ L.T
 
+
+    # ODOMETRY
+    yaw = gt["r"][k-1][2]
+
+    x_odom = p_est[k-1][0] + delta_t*gt["v"][k-1]*np.cos(yaw)
+    y_odom = p_est[k-1][1] + delta_t*gt["v"][k-1]*np.sin(yaw)
+
+    p_odom = np.array([x_odom, y_odom, 1])
+
+    p_est[k], v_est[k], p_cov[k] = measurement_update(var_odom, p_cov[k], p_odom, p_est[k], v_est[k])
+
     # 3. Check availability of GNSS and LIDAR measurements
+
 
     if count == 45:
         p_est[k], v_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gnss["data"][k], p_est[k], v_est[k])
@@ -254,8 +267,8 @@ ax.set_title('Ground Truth and Estimated Trajectory')
 # Establecer límites y marcas de los ejes
 ax.set_xlim(-400, 400)
 ax.set_ylim(-800, 200)
-ax.set_xticks([-600, -400, -200, 0, 200, 400, 600])
-ax.set_yticks([-600, -400, -200, 0, 200, 400, 600])
+# ax.set_xticks([ -400, -200, 0, 200, 400])
+# ax.set_yticks([-600, -400, -200, 0, 200])
 
 # Agregar leyenda y mostrar el gráfico
 ax.legend()
