@@ -190,8 +190,8 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
     # 1. Update state with IMU inputs
     quat = Quaternion(euler=gt["r"][k])
     
+    C_ns = np.eye(3) # El simulador CARLA ya realiza las transformaciones con respecto al sistema que queremos
 
-    C_ns = matriz_rotacion_z(quat)
     p_est[k] = p_est[k-1] + delta_t*v_est[k-1] + 0.5*(delta_t**2)*(C_ns@imu_f["data"][k-1])
 
     v_est[k] = v_est[k-1] + delta_t*(C_ns@imu_f["data"][k-1])
@@ -212,11 +212,11 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
 
     # 3. Check availability of GNSS and LIDAR measurements
 
-    # if count == 45:
-    #     p_est[k], v_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gnss["data"][k], p_est[k], v_est[k])
-    #     count = 0
+    if count == 45:
+        p_est[k], v_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gnss["data"][k], p_est[k], v_est[k])
+        count = 0
     
-    # count += 1
+    count += 1
     
     # if lidar_i < lidar.t.shape[0] and lidar.t[lidar_i] == imu_f.t[k-1]:
     #     p_est[k], v_est[k], q_est[k], p_cov[k] = measurement_update(var_lidar, p_cov[k], lidar.data[lidar_i].T, p_est[k], v_est[k], q_est[k])
