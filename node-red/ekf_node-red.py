@@ -17,14 +17,14 @@ import matplotlib.pyplot as plt
 # This is where you will load the data from the pickle files. For parts 1 and 2, you will use
 # p1_data.pkl. For Part 3, you will use pt3_data.pkl.
 ################################################################################################
-data = np.genfromtxt('./../data/data_v2.txt', delimiter=',', skip_header=1)
+data = np.genfromtxt('D:\davpr\DocumentsD\estimation\state-stimation\data\prueba_ekf.txt', delimiter=',')
 
 # Crear los objetos gt, imu_f y gnss
-gt = {'p': data[:,11:13], 'vel': data[:,4], 'r': data[:,6:9], '_t': data[:,0]}
-imu_f = {'data': data[:,1:4], 't': data[:,0]}
-gnss = {'data': data[:,9:11], 't': data[:,0]}
+hall = {'vel': data[:,1],  '_t': data[:,0]}
+imu_yaw = {'data': data[:,2], 't': data[:,0]}
+gnss = {'data': data[:,3:5], 't': data[:,0]}
 
-
+#print(gnss)
 ################################################################################################
 # Each element of the data dictionary is stored as an item from the data dictionary, which we
 # will store in local variables, described by the following:
@@ -71,14 +71,13 @@ var_gnss  = 0.01
 ################################################################################################
 # Let's set up some initial values for our ES-EKF solver.
 ################################################################################################
-p_est = np.zeros([imu_f["data"].shape[0], 2])  # position estimates
-p_cov = np.zeros([imu_f["data"].shape[0], 2, 2])  # covariance matrices at each timestep
+p_est = np.zeros([imu_yaw["data"].shape[0], 2])  # position estimates
+p_cov = np.zeros([imu_yaw["data"].shape[0], 2, 2])  # covariance matrices at each timestep
 
 # Set initial values.
-p_est[0] = gt["p"][0]
+p_est[0] = np.zeros(2)
 p_cov[0] = np.zeros(2)  # covariance of estimate
 gnss_i  = 0
-lidar_i = 0
 
 #### 4. Measurement Update #####################################################################
 
@@ -112,17 +111,17 @@ def measurement_update(sensor_var, p_cov_check, y_k, p_check):
 # for our state in a loop.
 ################################################################################################
 count = 0
-for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial prediction from gt
-    delta_t = imu_f["t"][k] - imu_f["t"][k - 1]
+for k in range(1, imu_yaw["data"].shape[0]):  # start at 1 b/c we have initial prediction from gt
+    delta_t = imu_yaw["t"][k] - imu_yaw["t"][k - 1]
     
-    imu_noise = np.random.normal(0,0.1, (3,))
-    imu_data = imu_f["data"][k-1] + imu_noise
+    #imu_noise = np.random.normal(0,0.1, (3,))
+    #imu_data = imu_yaw["data"][k-1] #+ imu_noise
 
-    f_v = np.array([np.cos(gt["r"][k-1][2])*delta_t,
-                    np.sin(gt["r"][k-1][2])*delta_t])
-
-    p_est[k] = p_est[k-1] + f_v*gt["vel"][k-1]
-
+    f_v = np.array([np.cos(imu_yaw["data"][k-1])*delta_t,
+                    np.sin(imu_yaw["data"][k-1])*delta_t])
+    # print(hall["vel"][k-1])
+    p_est[k] = p_est[k-1] + f_v*hall["vel"][k-1]
+    #print(p_est[k])
     # 1.1 Linearize the motion model and compute Jacobians
     F = np.eye(2)
     L = np.eye(2)
@@ -130,9 +129,9 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
 
     # 2. Propagate uncertainty
     p_cov[k] = F @ p_cov[k-1] @ F.T + L @ Q @ L.T
-
+    
     # 3. Check availability of GNSS measurements
-    if count == 45: 
+    if not np.isnan(gnss["data"][k][0]): 
         noise_gps = np.random.normal(0,2, (2,))
         #noise_gps = np.append(noise_gps,0)
         gps_data = gnss["data"][k]#+noise_gps
@@ -141,7 +140,7 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
     
     count += 1
 
-last = imu_f["data"].shape[0]-1
+last = imu_yaw["data"].shape[0]-1
 
-data2sent = str(p_est[last][0]) + "," + str(p_est[last][1   ]) + "," + str(gt["p"][last,0]) + "," + str(gt["p"][last,1]) 
+data2sent = str(p_est[last][0]) + "," + str(p_est[last][1]) #+ "," + str(gt["p"][last,0]) + "," + str(gt["p"][last,1]) 
 print(data2sent)
