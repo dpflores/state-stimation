@@ -229,18 +229,18 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
     p_odom = np.array([x_odom, y_odom, 1])
     # p_est[k] = p_odom
 
-    p_est[k], v_est[k], p_cov[k] = measurement_update(var_odom, p_cov[k], p_odom, p_est[k], v_est[k])
+    #p_est[k], v_est[k], p_cov[k] = measurement_update(var_odom, p_cov[k], p_odom, p_est[k], v_est[k])
 
     # 3. Check availability of GNSS and LIDAR measurements
 
 
 
     if count == 45:
-        p_est[k], v_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gnss["data"][k] + np.random.normal(0,2, (3,)), p_est[k], v_est[k])
+        #p_est[k], v_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gnss["data"][k] + np.random.normal(0,2, (3,)), p_est[k], v_est[k])
         count = 0
-        # p_est[k] = gnss["data"][k] + np.random.normal(0,2, (3,))
+        p_est[k] = gnss["data"][k] + np.random.normal(0,2, (3,))
     count += 1
-    
+
     # if lidar_i < lidar.t.shape[0] and lidar.t[lidar_i] == imu_f.t[k-1]:
     #     p_est[k], v_est[k], q_est[k], p_cov[k] = measurement_update(var_lidar, p_cov[k], lidar.data[lidar_i].T, p_est[k], v_est[k], q_est[k])
     #     lidar_i += 1

@@ -109,6 +109,7 @@ t_i_li = np.array([0.5, 0.1, 0.5])
 # var_imu_f = 0.10
 # var_imu_w = 0.25
 var_speed = 0.1
+var_yaw = 0.1
 var_gnss  = 2
 # var_lidar = 1.00
 
@@ -147,10 +148,7 @@ lidar_i = 0
 ################################################################################################
 def measurement_update(sensor_var, p_cov_check, y_k, p_check):
     # 3.1 Compute Kalman Gain
-    #H = np.zeros((3,6))
-    #H[:3,:3] = np.eye(3)
     H = np.eye(2)
-    #I = np.identity(3)
     I = np.identity(2)
     R = I * sensor_var
     K = p_cov_check @ H.T @ np.linalg.inv(H @ p_cov_check @ H.T + R)
@@ -193,33 +191,24 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
     
     # 1. Update state with IMU inputs
     quat = Quaternion(euler=gt["r"][k])
+
+    yaw = gt["r"][k][2]
+    vel = gt["vel"][k]
     
     #C_ns = np.eye(3) # El simulador CARLA ya realiza las transformaciones con respecto al sistema que queremos
     C_ns = np.eye(2)
 
-    imu_noise = np.random.normal(0,0.5, (3,))
-    imu_data = imu_f["data"][k-1] + imu_noise
+    f_v = np.array([np.cos(yaw)*delta_t,
+                    np.sin(yaw)*delta_t])
 
-    f_v = np.array([np.cos(gt["r"][k-1][2])*delta_t,
-                    np.sin(gt["r"][k-1][2])*delta_t])
+    p_est[k] = p_est[k-1] + f_v*vel
 
-    p_est[k] = p_est[k-1] + f_v*gt["vel"][k-1]
-
-
-    # p_est[k] = p_est[k-1] + delta_t*v_est[k-1] + 0.5*(delta_t**2)*(C_ns@imu_data)
-    #v_est[k] = v_est[k-1] + delta_t*(C_ns@imu_data)
-
-    # 1.1 Linearize the motion model and compute Jacobians
-     
-    # F = np.eye(6)
-    # F[:3, 3:6] = delta_t * np.eye(3)
-    # L = np.zeros((6,3))
-    # L[3:,:] = np.eye(3)
-    # Q = var_imu_f * delta_t**2 * np.eye(3)
 
     F = np.eye(2)
-    L = np.eye(2)
-    Q = var_speed*np.eye(2)
+    L = np.array([[np.cos(yaw)*delta_t, np.sin(yaw)*delta_t],
+                    [-vel*delta_t*np.sin(yaw), vel*delta_t*np.cos(yaw)]])
+    # L = np.eye(2)
+    Q = np.diag([var_speed, var_yaw])
     # 2. Propagate uncertainty
     
     p_cov[k] = F @ p_cov[k-1] @ F.T + L @ Q @ L.T

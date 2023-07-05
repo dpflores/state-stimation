@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 # This is where you will load the data from the pickle files. For parts 1 and 2, you will use
 # p1_data.pkl. For Part 3, you will use pt3_data.pkl.
 ################################################################################################
-data = np.genfromtxt('/home/del/Del/PERSONAL/AV/state-stimation/data/data_ekf03.txt', delimiter=',')
+data = np.genfromtxt('/home/del/Del/PERSONAL/AV/state-stimation/data/data_ekf02.txt', delimiter=',')
 
 # Crear los objetos gt, imu_f y gnss
 hall = {'vel': data[:,1],  '_t': data[:,0]}
@@ -64,7 +64,8 @@ print(gnss['data'][:,0])
 # We set the values here.
 ################################################################################################
 var_speed = 0.14
-var_gnss  = 0.01
+var_yaw = 0.1
+var_gnss  = 0.2
 
 #### 3. Initial Values #########################################################################
 
@@ -114,34 +115,34 @@ def measurement_update(sensor_var, p_cov_check, y_k, p_check):
 count = 0
 for k in range(1, imu_yaw["data"].shape[0]):  # start at 1 b/c we have initial prediction from gt
     delta_t = imu_yaw["t"][k] - imu_yaw["t"][k - 1]
-    
-    #imu_noise = np.random.normal(0,0.1, (3,))
-    #imu_data = imu_yaw["data"][k-1] #+ imu_noise
+    delta_t = 0.2
 
-    f_v = np.array([np.cos(imu_yaw["data"][k-1])*delta_t,
-                    np.sin(imu_yaw["data"][k-1])*delta_t])
+
+    yaw = imu_yaw["data"][k] + np.pi/10
+    vel = hall["vel"][k]
+
+    f_v = np.array([np.cos(yaw)*delta_t,
+                    np.sin(yaw)*delta_t])
     # print(hall["vel"][k-1])
-    p_est[k] = p_est[k-1] + f_v*hall["vel"][k-1]
-    hall_pos[k] = hall_pos[k-1] + f_v*hall["vel"][k-1]
+    p_est[k] = p_est[k-1] + f_v*vel
+    hall_pos[k] = hall_pos[k-1] + f_v*vel
     #print(p_est[k])
     # 1.1 Linearize the motion model and compute Jacobians
     F = np.eye(2)
-    L = np.eye(2)
-    
-    Q = var_speed*np.eye(2)
+    L = np.array([[np.cos(yaw)*delta_t, np.sin(yaw)*delta_t],
+                    [-vel*delta_t*np.sin(yaw), vel*delta_t*np.cos(yaw)]])
+    # L = np.eye(2)
+    Q = np.diag([var_speed, var_yaw])
 
     # 2. Propagate uncertainty
     p_cov[k] = F @ p_cov[k-1] @ F.T + L @ Q @ L.T
     
     # 3. Check availability of GNSS measurements
     if not np.isnan(gnss["data"][k][0]): 
-        noise_gps = np.random.normal(0,2, (2,))
-        #noise_gps = np.append(noise_gps,0)
-        gps_data = gnss["data"][k]#+noise_gps
+       
+        gps_data = gnss["data"][k]
         p_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gps_data, p_est[k])
-        count = 0
-    
-    count += 1
+
 
 last = imu_yaw["data"].shape[0]-1
 
