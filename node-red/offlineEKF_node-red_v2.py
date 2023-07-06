@@ -106,6 +106,33 @@ def measurement_update(sensor_var, p_cov_check, y_k, p_check):
 
     return p_hat, p_cov_hat
 
+def rotate_vector(vector, theta):
+    # Convertir el ángulo a radianes
+    theta_rad = np.radians(theta)
+    
+    # Matriz de rotación en sentido antihorario
+    rotation_matrix = np.array([[np.cos(theta_rad), -np.sin(theta_rad)],
+                                [np.sin(theta_rad), np.cos(theta_rad)]])
+    
+    # Aplicar la rotación al vector
+    rotated_vector = np.dot(rotation_matrix, vector)
+    return rotated_vector
+
+def normalize_angle(angle):
+        """
+        Normalize an angle to [-pi, pi].
+        :param angle: (float)
+        :return: (float) Angle in radian in [-pi, pi]
+        """
+        while angle > np.pi:
+            angle -= 2.0 * np.pi
+
+        while angle < -np.pi:
+            angle += 2.0 * np.pi
+
+        return angle
+    
+    
 #### 5. Main Filter Loop #######################################################################
 
 ################################################################################################
@@ -118,7 +145,8 @@ for k in range(1, imu_yaw["data"].shape[0]):  # start at 1 b/c we have initial p
     delta_t = 0.2
 
 
-    yaw = imu_yaw["data"][k] + np.pi/10
+    yaw = -imu_yaw["data"][k]
+    # yaw = normalize_angle(yaw)
     vel = hall["vel"][k]
 
     f_v = np.array([np.cos(yaw)*delta_t,
@@ -134,6 +162,7 @@ for k in range(1, imu_yaw["data"].shape[0]):  # start at 1 b/c we have initial p
     # L = np.eye(2)
     Q = np.diag([var_speed, var_yaw])
 
+
     # 2. Propagate uncertainty
     p_cov[k] = F @ p_cov[k-1] @ F.T + L @ Q @ L.T
     
@@ -141,6 +170,8 @@ for k in range(1, imu_yaw["data"].shape[0]):  # start at 1 b/c we have initial p
     if not np.isnan(gnss["data"][k][0]): 
        
         gps_data = gnss["data"][k]
+        # theta = -17
+        # gps_data = rotate_vector(gps_data, theta)
         p_est[k], p_cov[k] = measurement_update(var_gnss, p_cov[k], gps_data, p_est[k])
 
 
