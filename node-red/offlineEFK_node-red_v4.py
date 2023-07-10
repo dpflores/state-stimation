@@ -67,7 +67,8 @@ def convertir_gps_a_xy(latitud, longitud, latitud_origen, longitud_origen):
 # This is where you will load the data from the pickle files. For parts 1 and 2, you will use
 # p1_data.pkl. For Part 3, you will use pt3_data.pkl.
 ################################################################################################
-data = np.genfromtxt('D:\davpr\DocumentsD\estimation\state-stimation\data\data_ekf07.txt', delimiter=',')
+# data = np.genfromtxt('D:\davpr\DocumentsD\estimation\state-stimation\data\data_ekf07.txt', delimiter=',')
+data = np.genfromtxt('/home/del/Del/CARLA/CarlaSimulator/PythonClient/state-stimation/data/data_ekf08_filt.txt', delimiter=',')
 
 # Crear los objetos gt, imu_f y gnss
 hall = {'vel': data[:,1],  '_t': data[:,0]}
@@ -129,9 +130,9 @@ for i in range(len(gnss['data'])):
 ################################################################################################
 # var_speed = 0.1
 # var_gnss  = 0.01
-var_speed = 0.0566#0.14
+var_speed = 0.5#0.14
 var_yaw = 0.017
-var_gnss  = 2
+var_gnss  = 0.5
 #### 3. Initial Values #########################################################################
 
 ################################################################################################
@@ -183,7 +184,7 @@ for k in range(1, imu_yaw["data"].shape[0]):  # start at 1 b/c we have initial p
     #delta_t = 0.2
 
 
-    yaw = -imu_yaw["data"][k]
+    yaw = -imu_yaw["data"][k] # + np.pi/10
     # yaw = normalize_angle(yaw)
     vel = hall["vel"][k]
 
@@ -200,7 +201,8 @@ for k in range(1, imu_yaw["data"].shape[0]):  # start at 1 b/c we have initial p
     # L = np.eye(2)
     Q = np.diag([var_speed, var_yaw])
 
-
+    # var_speed+=delta_t
+    # var_yaw += delta_t
     # 2. Propagate uncertainty
     p_cov[k] = F @ p_cov[k-1] @ F.T + L @ Q @ L.T
 
@@ -221,7 +223,7 @@ ekf_latlon = np.zeros(p_est.shape)
 for i in range(len(p_est)):
     ekf_latlon[i,:] = convertir_xy_a_gps(gnss['data'][0,0], gnss['data'][0,1], p_est[i,0], p_est[i,1])
     
-np.savetxt('D:\davpr\DocumentsD\estimation\state-stimation\data\ekf_latlon07.txt', ekf_latlon)
+np.savetxt('/home/del/Del/CARLA/CarlaSimulator/PythonClient/state-stimation/data/ekf_latlon08.txt', ekf_latlon)
 
 last = imu_yaw["data"].shape[0]-1
 
@@ -255,6 +257,12 @@ ax.set_title('Ground Truth and Estimated Trajectory')
 ax.legend()
 plt.show()
 
-ruh_m = plt.imread('D:\davpr\DocumentsD\estimation\state-stimation\data\map.png')
+
+plt.rcParams.update({
+            "text.usetex": True,
+            "font.family": "DejaVu Sans"
+        })
+
+ruh_m = plt.imread('/home/del/Del/CARLA/CarlaSimulator/PythonClient/state-stimation/data/map.png')
 BBox = (-77.02268, -77.01940, -12.13693, -12.13490)
 make2Plot(ruh_m, BBox, ekf_latlon[:,1], ekf_latlon[:,0], gnss['data'][:,1], gnss['data'][:,0], l1='EKF', l2 = 'GPS')
