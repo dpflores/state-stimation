@@ -35,7 +35,9 @@ def convertir_gps_a_xy(latitud, longitud, latitud_origen, longitud_origen):
 # This is where you will load the data from the pickle files. For parts 1 and 2, you will use
 # p1_data.pkl. For Part 3, you will use pt3_data.pkl.
 ################################################################################################
-data = np.genfromtxt('D:\davpr\DocumentsD\estimation\state-stimation\data\data_ekf08_filt.txt', delimiter=',')
+# data = np.genfromtxt('D:\davpr\DocumentsD\estimation\state-stimation\data\data_ekf08_filt.txt', delimiter=',')
+# data = np.genfromtxt('/home/del/Del/CARLA/CarlaSimulator/PythonClient/state-stimation/data/data_ekf08_filt.txt', delimiter=',')
+data = np.genfromtxt('/home/del/Del/CARLA/CarlaSimulator/PythonClient/state-stimation/data/data_ekf08_filt.txt', delimiter=',')
 
 # Crear los objetos gt, imu_f y gnss
 hall = {'vel': data[:,1],  '_t': data[:,0]}
@@ -93,9 +95,9 @@ for i in range(len(gnss['data'])):
 ################################################################################################
 # var_speed = 0.1
 # var_gnss  = 0.01
-var_speed = 0.1 #0.14
-var_yaw = 0.1
-var_gnss  = 0.2
+var_speed = 1 #0.14
+var_yaw = 0.01
+var_gnss  = 2
 #### 3. Initial Values #########################################################################
 
 ################################################################################################
@@ -160,7 +162,7 @@ for k in range(1, imu_yaw["data"].shape[0]):  # start at 1 b/c we have initial p
     # 1.1 Linearize the motion model and compute Jacobians
     F = np.eye(2)
     L = np.array([[np.cos(yaw)*delta_t, np.sin(yaw)*delta_t],
-                    [-vel*delta_t*np.sin(yaw), vel*delta_t*np.cos(yaw)]])
+                    [-vel*delta_t*np.sin(yaw), vel*delta_t*np.cos(yaw)]]).T
     # L = np.eye(2)
     Q = np.diag([var_speed, var_yaw])
 
@@ -186,22 +188,29 @@ last = imu_yaw["data"].shape[0]-1
 data2sent = str(p_est[last][0]) + "," + str(p_est[last][1]) #+ "," + str(gt["p"][last,0]) + "," + str(gt["p"][last,1]) 
 print(data2sent)
 
+
+plt.rcParams.update({
+            "text.usetex": True,
+            "font.family": "DejaVu Sans"
+        })
+
+
 # Crear la figura y los ejes
 est_traj_fig = plt.figure()
 ax = est_traj_fig.add_subplot(111)
 
 # Graficar las variables en el plano XY
-ax.plot(p_est[:, 0], p_est[:, 1], label='EKF')
+ax.plot(p_est[:, 0], p_est[:, 1])
 a = utm["data"][:,0]
 b = utm["data"][:,1]
 gps_x =a[~np.isnan(a)]
 gps_y = b[~np.isnan(b)]
-ax.plot(gps_x, gps_y, label='GPS')
-ax.plot(hall_pos[:,0], hall_pos[:,1], label='Odom')
+# ax.plot(gps_x, gps_y, label='GPS')
+# ax.plot(hall_pos[:,0], hall_pos[:,1], label='Odom')
 # Configurar etiquetas y título del gráfico
-ax.set_xlabel('Easting [m]')
-ax.set_ylabel('Northing [m]')
-ax.set_title('Ground Truth and Estimated Trajectory')
+ax.set_xlabel(r'Posici\'on en x (m)')
+ax.set_ylabel(r'Posici\'on en y (m)')
+# ax.set_title('Ground Truth and Estimated Trajectory')
 
 # Establecer límites y marcas de los ejes
 #ax.set_xlim(-400, 400)
@@ -210,5 +219,5 @@ ax.set_title('Ground Truth and Estimated Trajectory')
 #ax.set_yticks([-600, -400, -200, 0, 200, 400, 600])
 
 # Agregar leyenda y mostrar el gráfico
-ax.legend()
+# ax.legend()
 plt.show()

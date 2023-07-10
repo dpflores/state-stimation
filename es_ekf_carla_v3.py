@@ -108,8 +108,8 @@ t_i_li = np.array([0.5, 0.1, 0.5])
 ################################################################################################
 # var_imu_f = 0.10
 # var_imu_w = 0.25
-var_speed = 0.1
-var_yaw = 0.1
+var_speed = 1
+var_yaw = 0.01
 var_gnss  = 2
 # var_lidar = 1.00
 
@@ -206,7 +206,7 @@ for k in range(1, imu_f["data"].shape[0]):  # start at 1 b/c we have initial pre
 
     F = np.eye(2)
     L = np.array([[np.cos(yaw)*delta_t, np.sin(yaw)*delta_t],
-                    [-vel*delta_t*np.sin(yaw), vel*delta_t*np.cos(yaw)]])
+                    [-vel*delta_t*np.sin(yaw), vel*delta_t*np.cos(yaw)]]).T
     # L = np.eye(2)
     Q = np.diag([var_speed, var_yaw])
     # 2. Propagate uncertainty
