@@ -65,7 +65,7 @@ def convertir_gps_a_xy(latitud, longitud, latitud_origen, longitud_origen):
 # This is where you will load the data from the pickle files. For parts 1 and 2, you will use
 # p1_data.pkl. For Part 3, you will use pt3_data.pkl.
 ################################################################################################
-data = np.genfromtxt('./../data/data_ekf11_filt.txt', delimiter=',')
+data = np.genfromtxt('./../data/data_ekf07.txt', delimiter=',')
 
 # Crear los objetos gt, imu_f y gnss
 hall = {'vel': data[:,1],  '_t': data[:,0]}
@@ -130,6 +130,10 @@ for i in range(len(gnss['data'])):
 var_speed = 10.1**2#0.14
 var_yaw = 0.017**2
 var_gnss  = 2**2
+
+var_speed = 0.1#0.14
+var_yaw = 0.017
+var_gnss  = 2
 #### 3. Initial Values #########################################################################
 
 ################################################################################################
@@ -256,3 +260,23 @@ plt.show()
 ruh_m = plt.imread('./../data/map.png')
 BBox = (-77.02268, -77.01940, -12.13693, -12.13490)
 make2Plot(ruh_m, BBox, ekf_latlon[:,1], ekf_latlon[:,0], gnss['data'][:,1], gnss['data'][:,0], l1='EKF', l2 = 'GPS')
+# make2Plot(ruh_m, BBox, ekf_latlon[:,1], ekf_latlon[:,0], l1='EKF')
+
+plt.figure(figsize=(12, 8))
+plt.imshow(ruh_m, zorder=0, extent=BBox, aspect='equal')
+
+# Plot EKF data
+plt.plot(ekf_latlon[:,1], ekf_latlon[:,0], 'r-', label='EKF')
+
+
+# # Set axis labels and title
+# plt.xlabel('Longitude')
+# plt.ylabel('Latitude')
+# plt.title('EKF Localization')
+
+# Add legend
+plt.legend()
+plt.axis('off')
+
+# Show the plot
+plt.show()
